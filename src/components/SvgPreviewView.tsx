@@ -129,6 +129,14 @@ export const SvgPreviewView: React.FC<SvgPreviewViewProps> = ({
             </span>
           </div>
 
+          <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Dizilim Tekniği:</span>
+            <span className="font-bold font-mono text-indigo-700 text-[10px] bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              {config.tileShape === 'andamento' ? 'Andamento (Sobel Kenar & Eş Merkezli Akış)' : config.tileShape.toUpperCase()}
+            </span>
+          </div>
+
           {selectedColorFilter && (
             <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Seçili Filtre:</span>
@@ -147,6 +155,12 @@ export const SvgPreviewView: React.FC<SvgPreviewViewProps> = ({
             <span className="font-bold text-slate-800 font-mono">Taş ID: {hoveredTile.id}</span>
             <span className="text-slate-300">|</span>
             <span className="text-slate-700 font-medium">{hoveredTile.colorName} ({hoveredTile.colorCode})</span>
+            {hoveredTile.angleDeg !== undefined && (
+              <>
+                <span className="text-slate-300">|</span>
+                <span className="text-indigo-600 font-mono font-bold">Açı: {hoveredTile.angleDeg}°</span>
+              </>
+            )}
             <span
               className="w-3 h-3 rounded-sm inline-block border border-slate-300"
               style={{ backgroundColor: hoveredTile.hex }}

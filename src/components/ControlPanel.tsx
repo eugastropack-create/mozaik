@@ -294,6 +294,165 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Dizilim Modu & Sanatsal Andamento Seçeneği */}
+        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Mozaik Dizilim & Akış Tekniği:
+            </span>
+            <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded">
+              {config.tileShape === 'andamento' ? 'Andamento Modu' : 'Klasik Geometrik'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <button
+              onClick={() => onChangeConfig({ ...config, tileShape: 'andamento' })}
+              className={`p-2 rounded border text-left flex flex-col transition-all ${
+                config.tileShape === 'andamento'
+                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs ring-2 ring-indigo-500/20'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold flex items-center justify-between">
+                Andamento
+                {config.tileShape === 'andamento' && <span className="text-[8px] bg-amber-400 text-slate-900 font-black px-1 rounded">AKTİF</span>}
+              </span>
+              <span className={`text-[10px] mt-0.5 ${config.tileShape === 'andamento' ? 'text-indigo-100' : 'text-slate-400'}`}>
+                Kenar Takip & Akış Çizgileri
+              </span>
+            </button>
+
+            <button
+              onClick={() => onChangeConfig({ ...config, tileShape: 'grid' })}
+              className={`p-2 rounded border text-left flex flex-col transition-all ${
+                config.tileShape === 'grid'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold">Izgara (Grid)</span>
+              <span className={`text-[10px] mt-0.5 ${config.tileShape === 'grid' ? 'text-slate-300' : 'text-slate-400'}`}>
+                Düz Dikdörtgen Matris
+              </span>
+            </button>
+
+            <button
+              onClick={() => onChangeConfig({ ...config, tileShape: 'staggered' })}
+              className={`p-2 rounded border text-left flex flex-col transition-all ${
+                config.tileShape === 'staggered'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold">Şaşırtmalı</span>
+              <span className={`text-[10px] mt-0.5 ${config.tileShape === 'staggered' ? 'text-slate-300' : 'text-slate-400'}`}>
+                Tuğla / Derz Kaydırmalı
+              </span>
+            </button>
+
+            <button
+              onClick={() => onChangeConfig({ ...config, tileShape: 'hex' })}
+              className={`p-2 rounded border text-left flex flex-col transition-all ${
+                config.tileShape === 'hex'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold">Altıgen</span>
+              <span className={`text-[10px] mt-0.5 ${config.tileShape === 'hex' ? 'text-slate-300' : 'text-slate-400'}`}>
+                Bal Peteği Dizilimi
+              </span>
+            </button>
+          </div>
+
+          {/* Andamento Özel Parametreleri */}
+          {config.tileShape === 'andamento' && (
+            <div className="mt-3 pt-2.5 border-t border-slate-200/80 space-y-2.5 bg-white p-2.5 rounded border border-indigo-100">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-700 text-[11px]">Sobel Kenar & Detay Algılama:</span>
+                <span className="font-mono text-indigo-600 font-bold text-[11px]">
+                  Seviye {config.andamentoConfig?.edgeSensitivity || 6} / 10
+                </span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                value={config.andamentoConfig?.edgeSensitivity || 6}
+                onChange={(e) =>
+                  onChangeConfig({
+                    ...config,
+                    andamentoConfig: {
+                      ...(config.andamentoConfig || {
+                        edgeSensitivity: 6,
+                        concentricRings: true,
+                        adaptiveDensity: true,
+                        flowJitter: 5
+                      }),
+                      edgeSensitivity: Number(e.target.value)
+                    }
+                  })
+                }
+                className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer"
+              />
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {/* Eş Merkezli Dizilim Toggle */}
+                <button
+                  onClick={() =>
+                    onChangeConfig({
+                      ...config,
+                      andamentoConfig: {
+                        ...(config.andamentoConfig || {
+                          edgeSensitivity: 6,
+                          concentricRings: true,
+                          adaptiveDensity: true,
+                          flowJitter: 5
+                        }),
+                        concentricRings: !config.andamentoConfig?.concentricRings
+                      }
+                    })
+                  }
+                  className={`p-1.5 rounded border text-[10px] font-bold text-left transition-colors ${
+                    config.andamentoConfig?.concentricRings
+                      ? 'bg-amber-50 border-amber-300 text-amber-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-500'
+                  }`}
+                >
+                  Eş Merkezli (Concentric) Halkalar: {config.andamentoConfig?.concentricRings ? 'AÇIK' : 'KAPALI'}
+                </button>
+
+                {/* Adaptif Taş Yoğunluğu Toggle */}
+                <button
+                  onClick={() =>
+                    onChangeConfig({
+                      ...config,
+                      andamentoConfig: {
+                        ...(config.andamentoConfig || {
+                          edgeSensitivity: 6,
+                          concentricRings: true,
+                          adaptiveDensity: true,
+                          flowJitter: 5
+                        }),
+                        adaptiveDensity: !config.andamentoConfig?.adaptiveDensity
+                      }
+                    })
+                  }
+                  className={`p-1.5 rounded border text-[10px] font-bold text-left transition-colors ${
+                    config.andamentoConfig?.adaptiveDensity
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                      : 'bg-slate-50 border-slate-200 text-slate-500'
+                  }`}
+                >
+                  Kenarda Küçük Taş: {config.andamentoConfig?.adaptiveDensity ? 'AÇIK' : 'KAPALI'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="h-px bg-slate-100" />

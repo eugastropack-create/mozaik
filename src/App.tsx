@@ -23,11 +23,17 @@ export default function App() {
     material: 'cam',
     showNumbers: true, // Default ON as required
     showGridLines: true,
-    tileShape: 'grid',
+    tileShape: 'andamento', // Default to contour-based Andamento flow placement
     groutColor: '#1e293b',
     wasteMarginPercent: 10,
     contrastEnhancement: 10,
-    saturationEnhancement: 15
+    saturationEnhancement: 15,
+    andamentoConfig: {
+      edgeSensitivity: 6,
+      concentricRings: true,
+      adaptiveDensity: true,
+      flowJitter: 5
+    }
   });
 
   const [selectedPreset, setSelectedPreset] = useState<PresetArtwork | null>(PRESET_ARTWORKS[0]);

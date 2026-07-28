@@ -1,5 +1,12 @@
 export type TileMaterial = 'cam' | 'seramik' | 'mermer' | 'vitray';
-export type TileShape = 'grid' | 'staggered' | 'hex';
+export type TileShape = 'grid' | 'staggered' | 'hex' | 'andamento';
+
+export interface AndamentoConfig {
+  edgeSensitivity: number; // 1 to 10 (Sobel thresholding)
+  concentricRings: boolean; // Concentric rings around facial/feature edges (Opus Vermiculatum)
+  adaptiveDensity: boolean; // Smaller tesserae on sharp edges, larger in flat areas
+  flowJitter: number; // 0 to 15 degrees organic artisan variation
+}
 
 export interface MosaicConfig {
   widthCm: number;
@@ -15,6 +22,7 @@ export interface MosaicConfig {
   wasteMarginPercent: number; // e.g. 10%
   contrastEnhancement: number; // -50 to +50
   saturationEnhancement: number; // -50 to +50
+  andamentoConfig: AndamentoConfig;
 }
 
 export interface ColorPaletteItem {
@@ -29,14 +37,22 @@ export interface ColorPaletteItem {
 }
 
 export interface TileData {
-  id: string; // e.g., "A1", "B12"
-  col: number; // 0-indexed
-  row: number; // 0-indexed
+  id: string; // e.g., "A1", "B12" or "T102"
+  col: number; // 0-indexed column or grid approximation
+  row: number; // 0-indexed row or grid approximation
   colorIndex: number;
   hex: string;
   colorCode: string;
   colorName: string;
-  sheetId: string; // e.g., "File Pano A1"
+  sheetId: string; // e.g., "Pano-1.1"
+  // Andamento spatial & orientation properties
+  xPx?: number; // Exact center/origin X coordinate in SVG space
+  yPx?: number; // Exact center/origin Y coordinate in SVG space
+  angleDeg?: number; // Tessera rotation angle (0-360 degrees along edge tangent)
+  widthPx?: number; // Adaptive width in SVG space
+  heightPx?: number; // Adaptive height in SVG space
+  isEdgeTile?: boolean; // True if tile lies on silhouette/edge contour
+  flowRing?: number; // Concentric ring distance index
 }
 
 export interface ProductionReport {

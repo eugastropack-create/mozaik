@@ -1,4 +1,5 @@
 import { ColorPaletteItem, MosaicConfig, ProductionReport, TileData, AssemblyStep } from '../types';
+import { generateAndamentoTesserae } from './andamentoEngine';
 
 // Palette reference with Turkish names
 const COLOR_NAMES_MAP: { hex: string; name: string }[] = [
@@ -174,7 +175,7 @@ export function processImageToTiles(
   const rows = Math.max(2, Math.floor((heightMm + config.groutSizeMm) / totalUnitMm));
   const totalTiles = cols * rows;
 
-  // Sample image down to cols x rows resolution
+  // Sample image down to cols x rows resolution for palette extraction
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = cols;
   tempCanvas.height = rows;
@@ -198,55 +199,60 @@ export function processImageToTiles(
   // Extract color palette
   const rawPalette = extractPaletteKMeans(sampledPixels, Math.min(config.maxColors, 32));
 
-  // Count usage of each palette color
-  const colorCounts = new Array(rawPalette.length).fill(0);
-  const tileList: TileData[] = [];
-
   // Sheet calculations (30x30 cm file sheets)
-  // 30 cm = 300 mm. Columns per 30cm sheet = Math.floor(300 / totalUnitMm)
   const colsPerSheet = Math.max(1, Math.floor(300 / totalUnitMm));
   const rowsPerSheet = Math.max(1, Math.floor(300 / totalUnitMm));
 
-  for (let r = 0; r < rows; r++) {
-    // Generate Row ID letter (A, B, C... Z, AA, AB...)
-    const rowLetter = getRowLabel(r);
+  let tileList: TileData[] = [];
+  let colorCounts: number[] = new Array(rawPalette.length).fill(0);
 
-    for (let c = 0; c < cols; c++) {
-      const pixelIdx = r * cols + c;
-      const pixelRgb = sampledPixels[pixelIdx];
+  if (config.tileShape === 'andamento') {
+    // Generate Tesserae using Contour-Based Andamento Engine
+    const andamentoRes = generateAndamentoTesserae(canvas, config, rawPalette);
+    tileList = andamentoRes.tiles;
+    colorCounts = andamentoRes.colorCounts;
+  } else {
+    // Standard Grid / Staggered / Hex Placement
+    for (let r = 0; r < rows; r++) {
+      const rowLetter = getRowLabel(r);
 
-      // Match pixel to nearest color in palette
-      let minD = Infinity;
-      let matchedColorIdx = 0;
-      for (let p = 0; p < rawPalette.length; p++) {
-        const pRgb = hexToRgb(rawPalette[p].hex);
-        const dist = colorDistance(pixelRgb, pRgb);
-        if (dist < minD) {
-          minD = dist;
-          matchedColorIdx = p;
+      for (let c = 0; c < cols; c++) {
+        const pixelIdx = r * cols + c;
+        const pixelRgb = sampledPixels[pixelIdx];
+
+        // Match pixel to nearest color in palette
+        let minD = Infinity;
+        let matchedColorIdx = 0;
+        for (let p = 0; p < rawPalette.length; p++) {
+          const pRgb = hexToRgb(rawPalette[p].hex);
+          const dist = colorDistance(pixelRgb, pRgb);
+          if (dist < minD) {
+            minD = dist;
+            matchedColorIdx = p;
+          }
         }
+
+        colorCounts[matchedColorIdx]++;
+
+        const tileId = `${rowLetter}${c + 1}`;
+        const sheetCol = Math.floor(c / colsPerSheet) + 1;
+        const sheetRow = Math.floor(r / rowsPerSheet) + 1;
+        const sheetId = `Pano-${sheetRow}.${sheetCol}`;
+
+        const matchedColor = rawPalette[matchedColorIdx];
+        const colorCode = `R${matchedColorIdx + 1}`;
+
+        tileList.push({
+          id: tileId,
+          col: c,
+          row: r,
+          colorIndex: matchedColorIdx,
+          hex: matchedColor.hex,
+          colorCode,
+          colorName: matchedColor.name,
+          sheetId
+        });
       }
-
-      colorCounts[matchedColorIdx]++;
-
-      const tileId = `${rowLetter}${c + 1}`; // e.g. "A1", "B12"
-      const sheetCol = Math.floor(c / colsPerSheet) + 1;
-      const sheetRow = Math.floor(r / rowsPerSheet) + 1;
-      const sheetId = `Pano-${sheetRow}.${sheetCol}`;
-
-      const matchedColor = rawPalette[matchedColorIdx];
-      const colorCode = `R${matchedColorIdx + 1}`;
-
-      tileList.push({
-        id: tileId,
-        col: c,
-        row: r,
-        colorIndex: matchedColorIdx,
-        hex: matchedColor.hex,
-        colorCode,
-        colorName: matchedColor.name,
-        sheetId
-      });
     }
   }
 
@@ -268,14 +274,14 @@ export function processImageToTiles(
 
   // Waste margin calculation
   const wasteMultiplier = 1 + config.wasteMarginPercent / 100;
-  const tilesWithWaste = Math.ceil(totalTiles * wasteMultiplier);
+  const actualTotalTiles = tileList.length || totalTiles;
+  const tilesWithWaste = Math.ceil(actualTotalTiles * wasteMultiplier);
 
   // Construct ColorPaletteItem array
   const paletteItems: ColorPaletteItem[] = rawPalette.map((item, i) => {
     const count = colorCounts[i];
-    const percentage = totalTiles > 0 ? Number(((count / totalTiles) * 100).toFixed(1)) : 0;
-    const itemWeightKg = Number(((count / totalTiles) * estimatedWeightKg).toFixed(2));
-    // Number of 30x30cm mesh sheets this color is used in
+    const percentage = actualTotalTiles > 0 ? Number(((count / actualTotalTiles) * 100).toFixed(1)) : 0;
+    const itemWeightKg = Number(((count / actualTotalTiles) * estimatedWeightKg).toFixed(2));
     const fileSheetCount = Math.ceil((count * wasteMultiplier) / (colsPerSheet * rowsPerSheet));
 
     return {
@@ -301,7 +307,7 @@ export function processImageToTiles(
     heightM: Number((config.heightCm / 100).toFixed(2)),
     gridColumns: cols,
     gridRows: rows,
-    totalTiles,
+    totalTiles: actualTotalTiles,
     tilesWithWaste,
     wasteMarginPercent: config.wasteMarginPercent,
     estimatedWeightKg,
@@ -380,7 +386,6 @@ function generateAssemblySteps(
       });
 
       const ranges = Object.values(colorGroups).map(g => {
-        // Construct logical range string e.g. "A1-A12, B1-B8"
         const firstT = g.tiles[0].id;
         const lastT = g.tiles[g.tiles.length - 1].id;
         const rangeStr = g.tiles.length === 1 ? firstT : `${firstT} - ${lastT} (Toplam ${g.count} Adet)`;
@@ -431,7 +436,7 @@ export function generateMosaicSVG(
   const fontSize = Math.max(7, Math.min(10, Math.floor(tilePx * 0.38)));
 
   let svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n`;
-  svgContent += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${widthPx} ${heightPx}" width="100%" height="100%" shape-rendering="crispEdges">\n`;
+  svgContent += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${widthPx} ${heightPx}" width="100%" height="100%" shape-rendering="geometricPrecision">\n`;
 
   // Background (Grout color)
   svgContent += `  <rect width="${widthPx}" height="${heightPx}" fill="${config.groutColor}" />\n`;
@@ -443,31 +448,59 @@ export function generateMosaicSVG(
     svgContent += `  </style>\n`;
   }
 
-  // Tile rects
+  // Tile group
   svgContent += `  <g id="mosaic-tiles">\n`;
 
-  for (const t of tiles) {
-    const x = groutPx + t.col * totalUnitPx;
-    const y = groutPx + t.row * totalUnitPx;
+  const isAndamento = config.tileShape === 'andamento';
 
-    // Corner radius for realistic mosaic look
+  for (const t of tiles) {
+    let x = groutPx + t.col * totalUnitPx;
+    let y = groutPx + t.row * totalUnitPx;
+    let w = tilePx;
+    let h = tilePx;
+    let angle = t.angleDeg || 0;
+
+    if (isAndamento && t.xPx !== undefined && t.yPx !== undefined) {
+      x = t.xPx - (t.widthPx || tilePx) / 2;
+      y = t.yPx - (t.heightPx || tilePx) / 2;
+      w = t.widthPx || tilePx;
+      h = t.heightPx || tilePx;
+    } else if (config.tileShape === 'staggered' && t.row % 2 === 1) {
+      x += totalUnitPx / 2;
+    }
+
     const rx = config.tileSizeMm >= 15 ? 2 : 1;
 
-    svgContent += `    <rect id="${t.id}" x="${x}" y="${y}" width="${tilePx}" height="${tilePx}" rx="${rx}" fill="${t.hex}" stroke="none" data-color-code="${t.colorCode}" data-color-name="${t.colorName}" />\n`;
+    if (isAndamento && t.xPx !== undefined && t.yPx !== undefined) {
+      svgContent += `    <rect id="${t.id}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" transform="rotate(${angle}, ${t.xPx.toFixed(1)}, ${t.yPx.toFixed(1)})" fill="${t.hex}" stroke="${config.groutColor}" stroke-width="0.5" data-color-code="${t.colorCode}" data-color-name="${t.colorName}" />\n`;
+    } else if (config.tileShape === 'hex') {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const r = w / 2;
+      const points = [];
+      for (let i = 0; i < 6; i++) {
+        const a = (Math.PI / 3) * i - Math.PI / 6;
+        points.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`);
+      }
+      svgContent += `    <polygon id="${t.id}" points="${points.join(' ')}" fill="${t.hex}" stroke="${config.groutColor}" stroke-width="0.5" data-color-code="${t.colorCode}" data-color-name="${t.colorName}" />\n`;
+    } else {
+      svgContent += `    <rect id="${t.id}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" fill="${t.hex}" stroke="none" data-color-code="${t.colorCode}" data-color-name="${t.colorName}" />\n`;
+    }
 
     if (config.showNumbers) {
-      // Calculate luminance to decide white vs black label text
       const rgb = hexToRgb(t.hex);
       const lum = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
       const fontColor = lum > 140 ? '#000000' : '#ffffff';
 
-      const cx = x + tilePx / 2;
-      const cy = y + tilePx / 2;
-
-      // Show tile ID (e.g. A1, A2) or Color Code (e.g. R1)
+      const cx = isAndamento && t.xPx !== undefined ? t.xPx : x + w / 2;
+      const cy = isAndamento && t.yPx !== undefined ? t.yPx : y + h / 2;
       const labelText = t.id;
 
-      svgContent += `    <text x="${cx}" y="${cy}" fill="${fontColor}" class="t-lbl">${labelText}</text>\n`;
+      if (isAndamento && t.xPx !== undefined && t.yPx !== undefined) {
+        svgContent += `    <text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" fill="${fontColor}" class="t-lbl" transform="rotate(${angle}, ${cx.toFixed(1)}, ${cy.toFixed(1)})">${labelText}</text>\n`;
+      } else {
+        svgContent += `    <text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" fill="${fontColor}" class="t-lbl">${labelText}</text>\n`;
+      }
     }
   }
 
@@ -476,3 +509,4 @@ export function generateMosaicSVG(
 
   return svgContent;
 }
+

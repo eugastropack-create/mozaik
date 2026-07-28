@@ -65,7 +65,7 @@ export function generateMaterialReportPDF(report: ProductionReport, config: Mosa
 
   doc.text(pdfText(`Toplam Alan: ${report.totalAreaM2} m2 (${report.widthM}m x ${report.heightM}m)`), col1X, y + 15);
   doc.text(pdfText(`Izgara Olcusu: ${report.gridColumns} Sutun x ${report.gridRows} Satir`), col1X, y + 21);
-  doc.text(pdfText(`Materyal Tipi: ${config.material.toUpperCase()} Mozaik`), col1X, y + 27);
+  doc.text(pdfText(`Materyal / Dizilim: ${config.material.toUpperCase()} (${config.tileShape === 'andamento' ? 'Andamento Akis' : config.tileShape.toUpperCase()})`), col1X, y + 27);
 
   doc.text(pdfText(`Tas Boyutu: ${config.tileSizeMm}x${config.tileSizeMm} mm`), col2X, y + 15);
   doc.text(pdfText(`Derz Boslugu: ${config.groutSizeMm} mm`), col2X, y + 21);
