@@ -1,0 +1,6 @@
+{
+  "name": "Sanatsal Mozaik Üretim Asistanı",
+  "description": "Sanatsal mozaik üretimi için resim analizi, renk paleti çıkarımı, taş ve derz hesaplama, ölçekli SVG önizleme, XML kodu ve detaylı montaj rehberi asistanı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
